@@ -35,12 +35,15 @@ def _create_app_layout(*args, **kwargs):
 
     import os
     df = pd.read_csv(os.path.join(os.path.dirname(__file__), "data/2019_ncov_data.csv"))
-    df["Date"] = pd.to_datetime(df["Date"])
+    df.columns = map(str.lower, df.columns)
+    df["date"] = pd.to_datetime(df["date"])
+    df["date1"]=pd.to_datetime(df["date"].dt.strftime('%m/%d/%Y'))
+    df["state"]=df["province/state"]
     #add a new column that only contains the day
-    df['day'] = df['Date'].dt.day
+    df['day'] = df['date'].dt.day
     # same for the month
-    df['month'] = df['Date'].dt.month
-
+    df['month'] = df['date'].dt.month
+    df1=df.groupby(["date1","country"]).agg({"confirmed":"sum"})
     #groupby day, month and aggregate the Confirmed as sum
     #df_confirmed_by_day = df.groupby(["Date"]).agg({"Confirmed": "sum"}) 
     #df = df_confirmed_by_day
@@ -48,10 +51,10 @@ def _create_app_layout(*args, **kwargs):
         dcc.Graph(id='corona_graph'),
         dcc.Slider(
             id='day-slider',
-            min=df['Date'].min(),
-            max=df['Date'].max(),
-            value=df['Date'].min(),
-            marks={str(i): str(i) for i in df['Date'].unique()},
+            min=df['date1'].min(),
+            max=df['date1'].max(),
+            value=df['date1'].min(),
+            marks={str(i): str(i) for i in df['date1'].unique()},
             step=None
         )
     ])
@@ -61,7 +64,7 @@ def _create_app_layout(*args, **kwargs):
         Output('corona_graph', 'figure'),
         [Input('day-slider', 'value')])
     def update_figure(selected_day):
-        filtered_df = df[df.Date == selected_day]
+        filtered_df = df[df.date1 == selected_day]
         traces = []
         #for i in filtered_df["Province/State"].unique():
         #    df_by_continent = filtered_df[filtered_df['Province/State'] == i]
@@ -74,13 +77,13 @@ def _create_app_layout(*args, **kwargs):
         return {
             'data': [
                 { 
-                    "y" : [12,22,33,44,55],
-                    "x" : str(df['Date'].unique()),
+                    "y" : list(filtered_df["confirmed"]),
+                    "x" : list(filtered_df["state"]),
                     "type" : "bar"
                 }
             ],
             'layout': {
-                "title" : "Confirmed infections by Province/State and date"
+                "title" : "Confirmed infections by Province/State and date" + str(selected_day)
             }
         }
 
